@@ -47,30 +47,6 @@ class BookServiceTest @Autowired constructor(
         testAuthorId2 = author2.id!!
     }
 
-    private fun createBookRequest(
-        title: String,
-        price: Int,
-        publicationStatus: String,
-        authorIds: List<Int>
-    ) = BookCreateRequest(
-        title = title,
-        price = price,
-        publicationStatus = publicationStatus,
-        authorIds = authorIds
-    )
-
-    private fun updateBookRequest(
-        title: String,
-        price: Int,
-        publicationStatus: String,
-        authorIds: List<Int>
-    ) = BookUpdateRequest(
-        title = title,
-        price = price,
-        authorIds = authorIds,
-        publicationStatus = publicationStatus
-    )
-
     @Test
     @DisplayName("書籍作成リクエストから書籍を作成できることをテストする")
     fun testCreateBook() {
@@ -225,5 +201,29 @@ class BookServiceTest @Autowired constructor(
         assertEquals(1, result.authors.size)
         assertEquals(testAuthorId2, result.authors[0].id)
     }
+
+    private fun createBookRequest(
+        title: String,
+        price: Int,
+        publicationStatus: String,
+        authorIds: List<Int>
+    ) = BookCreateRequest(
+        title = title,
+        price = price,
+        publicationStatus = publicationStatus,
+        authorIds = authorIds
+    )
+
+    private fun updateBookRequest(
+        title: String,
+        price: Int,
+        publicationStatus: String,
+        authorIds: List<Int>
+    ) = BookUpdateRequest(
+        title = title,
+        price = price,
+        authorIds = authorIds,
+        publicationStatus = publicationStatus
+    )
 }
 

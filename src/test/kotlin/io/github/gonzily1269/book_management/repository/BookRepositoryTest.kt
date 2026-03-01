@@ -39,21 +39,6 @@ class BookRepositoryTest @Autowired constructor(
         testAuthor2 = authorRepository.create("花子", LocalDate.of(1985, 6, 20))
     }
 
-    private fun createBook(
-        title: String,
-        price: Int,
-        authorIds: List<Int>,
-        publicationStatus: String
-    ) = bookRepository.create(title, price, authorIds, publicationStatus)
-
-    private fun updateBook(
-        id: Int,
-        title: String,
-        price: Int,
-        publicationStatus: String,
-        authorIds: List<Int>
-    ) = bookRepository.update(id, title, price, publicationStatus, authorIds)
-
     @Test
     @DisplayName("書籍を正常に作成できることをテストする")
     fun testCreateBook() {
@@ -242,5 +227,20 @@ class BookRepositoryTest @Autowired constructor(
         assertEquals("本1", foundBook1.title)
         assertEquals("本2", foundBook2.title)
     }
+
+    private fun createBook(
+        title: String,
+        price: Int,
+        authorIds: List<Int>,
+        publicationStatus: String
+    ) = bookRepository.create(title, price, authorIds, publicationStatus)
+
+    private fun updateBook(
+        id: Int,
+        title: String,
+        price: Int,
+        publicationStatus: String,
+        authorIds: List<Int>
+    ) = bookRepository.update(id, title, price, publicationStatus, authorIds)
 }
 

@@ -49,59 +49,6 @@ class BookControllerTest @Autowired constructor(
         testAuthorId2 = author2.id!!
     }
 
-    private fun extractId(json: String): Int {
-        return """"id":\s*(\d+)""".toRegex().find(json)?.groupValues?.get(1)?.toInt()
-            ?: throw IllegalStateException("IDが見つかりません: $json")
-    }
-
-    private fun buildBookJson(
-        title: String,
-        price: Int,
-        authorIds: List<Int>,
-        publicationStatus: String
-    ) =
-        """
-            {
-                "title": "$title",
-                "price": $price,
-                "authorIds": ${authorIds.joinToString(prefix = "[", postfix = "]")},
-                "publicationStatus": "$publicationStatus"
-            }
-        """.trimIndent()
-
-    private fun createBookRequest(
-        title: String = "Spring Boot入門",
-        price: Int = 3000,
-        authorIds: List<Int> = listOf(testAuthorId),
-        publicationStatus: String = "PUBLISHED"
-    ): ResultActions =
-        mockMvc.perform(
-            post(booksEndpoint)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(buildBookJson(title, price, authorIds, publicationStatus))
-        )
-
-    private fun createBook(
-        title: String = "Spring Boot入門",
-        price: Int = 3000,
-        authorIds: List<Int> = listOf(testAuthorId),
-        publicationStatus: String = "PUBLISHED"
-    ): MvcResult =
-        createBookRequest(title, price, authorIds, publicationStatus).andReturn()
-
-    private fun updateBookRequest(
-        bookId: Int,
-        title: String = "新しいタイトル",
-        price: Int = 2000,
-        authorIds: List<Int> = listOf(testAuthorId),
-        publicationStatus: String = "UNPUBLISHED"
-    ): ResultActions =
-        mockMvc.perform(
-            put("$booksEndpoint/$bookId")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(buildBookJson(title, price, authorIds, publicationStatus))
-        )
-
     @Test
     @DisplayName("POST /api/books で書籍を作成できることをテストする")
     fun testCreateBook() {
@@ -192,7 +139,7 @@ class BookControllerTest @Autowired constructor(
     }
 
     @Test
-    @DisplayName("updateBookの分岐を直接呼び出しで網羅する（200/404）")
+    @DisplayName("updateBookの分岐を直接呼び出しで網羅できることをテストする（200/404）")
     fun testUpdateBookBranchByDirectInvocation() {
         val service = Mockito.mock(BookService::class.java)
         val controller = BookController(service)
@@ -215,4 +162,57 @@ class BookControllerTest @Autowired constructor(
         assertEquals(200, okResponse.statusCode.value())
         assertEquals(404, notFoundResponse.statusCode.value())
     }
+
+    private fun extractId(json: String): Int {
+        return """"id":\s*(\d+)""".toRegex().find(json)?.groupValues?.get(1)?.toInt()
+            ?: throw IllegalStateException("IDが見つかりません: $json")
+    }
+
+    private fun buildBookJson(
+        title: String,
+        price: Int,
+        authorIds: List<Int>,
+        publicationStatus: String
+    ) =
+        """
+            {
+                "title": "$title",
+                "price": $price,
+                "authorIds": ${authorIds.joinToString(prefix = "[", postfix = "]")},
+                "publicationStatus": "$publicationStatus"
+            }
+        """.trimIndent()
+
+    private fun createBookRequest(
+        title: String = "Spring Boot入門",
+        price: Int = 3000,
+        authorIds: List<Int> = listOf(testAuthorId),
+        publicationStatus: String = "PUBLISHED"
+    ): ResultActions =
+        mockMvc.perform(
+            post(booksEndpoint)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(buildBookJson(title, price, authorIds, publicationStatus))
+        )
+
+    private fun createBook(
+        title: String = "Spring Boot入門",
+        price: Int = 3000,
+        authorIds: List<Int> = listOf(testAuthorId),
+        publicationStatus: String = "PUBLISHED"
+    ): MvcResult =
+        createBookRequest(title, price, authorIds, publicationStatus).andReturn()
+
+    private fun updateBookRequest(
+        bookId: Int,
+        title: String = "新しいタイトル",
+        price: Int = 2000,
+        authorIds: List<Int> = listOf(testAuthorId),
+        publicationStatus: String = "UNPUBLISHED"
+    ): ResultActions =
+        mockMvc.perform(
+            put("$booksEndpoint/$bookId")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(buildBookJson(title, price, authorIds, publicationStatus))
+        )
 }

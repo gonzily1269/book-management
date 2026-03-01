@@ -39,27 +39,8 @@ class GlobalExceptionHandlerTest @Autowired constructor(
     private val mockMvc: MockMvc
 ) {
 
-    companion object {
-        @JvmStatic
-        fun invalidValidationInputs(): Stream<Arguments> = Stream.of(
-            Arguments.of("太郎", LocalDate.now().plusYears(1).toString()),
-            Arguments.of("   ", "1990-01-15"),
-            Arguments.of("太郎", null)
-        )
-    }
-
     private val handler = GlobalExceptionHandler()
     private val authorEndpoint = "/api/authors"
-
-    private fun request(path: String) = ServletWebRequest(MockHttpServletRequest("POST", path))
-
-    private fun buildAuthorJson(name: String, birthDate: String?) =
-        """
-            {
-                "name": "$name",
-                "birthDate": ${birthDate?.let { "\"$it\"" } ?: "null"}
-            }
-        """.trimIndent()
 
     @Test
     @DisplayName("バリデーションエラーが400ステータスで返されることをテストする")
@@ -79,7 +60,7 @@ class GlobalExceptionHandlerTest @Autowired constructor(
 
     @ParameterizedTest(name = "name={0}, birthDate={1}")
     @MethodSource("invalidValidationInputs")
-    @DisplayName("入力値バリエーションでバリデーション失敗をテストする")
+    @DisplayName("入力値バリエーションでバリデーション失敗することをテストする")
     fun testValidationErrorCases(name: String, birthDate: String?) {
         mockMvc.perform(
             post(authorEndpoint)
@@ -91,7 +72,7 @@ class GlobalExceptionHandlerTest @Autowired constructor(
     }
 
     @Test
-    @DisplayName("無効な日付形式でのバリデーション失敗をテストする")
+    @DisplayName("無効な日付形式でバリデーション失敗することをテストする")
     fun testInvalidDateFormatValidationError() {
         mockMvc.perform(
             post(authorEndpoint)
@@ -120,7 +101,7 @@ class GlobalExceptionHandlerTest @Autowired constructor(
     }
 
     @Test
-    @DisplayName("IllegalStateExceptionのメッセージがnullの場合はデフォルト文言を返す")
+    @DisplayName("IllegalStateExceptionのメッセージがnullの場合にデフォルト文言を返すことをテストする")
     fun testHandleIllegalStateExceptionWithNullMessage() {
         val response = handler.handleIllegalStateException(IllegalStateException(), request("/api/books/1"))
 
@@ -132,7 +113,7 @@ class GlobalExceptionHandlerTest @Autowired constructor(
     }
 
     @Test
-    @DisplayName("一般例外のメッセージ有無で分岐を網羅する")
+    @DisplayName("一般例外のメッセージ有無で分岐を網羅できることをテストする")
     fun testHandleGeneralExceptionMessageBranches() {
         val responseWithMessage = handler.handleGeneralException(Exception("想定外エラー"), request(authorEndpoint))
         val responseWithoutMessage = handler.handleGeneralException(Exception(), request(authorEndpoint))
@@ -145,7 +126,7 @@ class GlobalExceptionHandlerTest @Autowired constructor(
     }
 
     @Test
-    @DisplayName("バリデーションエラーのdefaultMessageがnullの場合の分岐を網羅する")
+    @DisplayName("バリデーションエラーのdefaultMessageがnullの場合の分岐を網羅できることをテストする")
     fun testHandleValidationExceptionWithNullDefaultMessage() {
         val method = DummyValidationTarget::class.java.getDeclaredMethod("dummy", String::class.java)
         val parameter = MethodParameter(method, 0)
@@ -170,6 +151,25 @@ class GlobalExceptionHandlerTest @Autowired constructor(
         assertEquals("バリデーションエラー", response.body!!.error)
         assertEquals("バリデーションエラーが発生しました", response.body!!.errors["name"])
     }
+
+    companion object {
+        @JvmStatic
+        fun invalidValidationInputs(): Stream<Arguments> = Stream.of(
+            Arguments.of("太郎", LocalDate.now().plusYears(1).toString()),
+            Arguments.of("   ", "1990-01-15"),
+            Arguments.of("太郎", null)
+        )
+    }
+
+    private fun request(path: String) = ServletWebRequest(MockHttpServletRequest("POST", path))
+
+    private fun buildAuthorJson(name: String, birthDate: String?) =
+        """
+            {
+                "name": "$name",
+                "birthDate": ${birthDate?.let { "\"$it\"" } ?: "null"}
+            }
+        """.trimIndent()
 
     private class DummyValidationTarget {
         @Suppress("UNUSED_PARAMETER")

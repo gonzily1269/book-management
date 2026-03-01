@@ -36,42 +36,6 @@ class AuthorControllerTest @Autowired constructor(
 ) {
     private val authorEndpoint = "/api/authors"
 
-    private fun buildAuthorJson(name: String, birthDate: String) =
-        """
-            {
-                "name": "$name",
-                "birthDate": "$birthDate"
-            }
-        """.trimIndent()
-
-    private fun createAuthorRequest(
-        name: String = "太郎",
-        birthDate: String = "1990-01-15"
-    ): ResultActions =
-        mockMvc.perform(
-            post(authorEndpoint)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(buildAuthorJson(name, birthDate))
-        )
-
-    private fun createAuthor(name: String = "太郎", birthDate: String = "1990-01-15"): MvcResult =
-        createAuthorRequest(name, birthDate).andReturn()
-
-    private fun updateAuthorRequest(
-        authorId: Int,
-        name: String = "次郎",
-        birthDate: String = "1995-03-10"
-    ): ResultActions =
-        mockMvc.perform(
-            put("$authorEndpoint/$authorId")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(buildAuthorJson(name, birthDate))
-        )
-
-    private fun extractId(responseJson: String): Int =
-        """"id":\s*(\d+)""".toRegex().find(responseJson)?.groupValues?.get(1)?.toInt()
-            ?: error("レスポンスからIDを抽出できませんでした: $responseJson")
-
     @Test
     @DisplayName("POST /api/authors で著者を作成できることをテストする")
     fun testCreateAuthor() {
@@ -148,7 +112,7 @@ class AuthorControllerTest @Autowired constructor(
     }
 
     @Test
-    @DisplayName("updateAuthorの分岐を直接呼び出しで網羅する（200/404）")
+    @DisplayName("updateAuthorの分岐を直接呼び出しで網羅できることをテストする（200/404）")
     fun testUpdateAuthorBranchByDirectInvocation() {
         val service = Mockito.mock(AuthorService::class.java)
         val controller = AuthorController(service)
@@ -169,5 +133,41 @@ class AuthorControllerTest @Autowired constructor(
         assertEquals(200, okResponse.statusCode.value())
         assertEquals(404, notFoundResponse.statusCode.value())
     }
+
+    private fun buildAuthorJson(name: String, birthDate: String) =
+        """
+            {
+                "name": "$name",
+                "birthDate": "$birthDate"
+            }
+        """.trimIndent()
+
+    private fun createAuthorRequest(
+        name: String = "太郎",
+        birthDate: String = "1990-01-15"
+    ): ResultActions =
+        mockMvc.perform(
+            post(authorEndpoint)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(buildAuthorJson(name, birthDate))
+        )
+
+    private fun createAuthor(name: String = "太郎", birthDate: String = "1990-01-15"): MvcResult =
+        createAuthorRequest(name, birthDate).andReturn()
+
+    private fun updateAuthorRequest(
+        authorId: Int,
+        name: String = "次郎",
+        birthDate: String = "1995-03-10"
+    ): ResultActions =
+        mockMvc.perform(
+            put("$authorEndpoint/$authorId")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(buildAuthorJson(name, birthDate))
+        )
+
+    private fun extractId(responseJson: String): Int =
+        """"id":\s*(\d+)""".toRegex().find(responseJson)?.groupValues?.get(1)?.toInt()
+            ?: error("レスポンスからIDを抽出できませんでした: $responseJson")
 }
 

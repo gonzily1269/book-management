@@ -25,12 +25,6 @@ class AuthorServiceTest @Autowired constructor(
     private val authorService: AuthorService
 ) {
 
-    private fun createRequest(name: String, birthDate: LocalDate) =
-        AuthorCreateRequest(name = name, birthDate = birthDate)
-
-    private fun updateRequest(name: String, birthDate: LocalDate) =
-        AuthorUpdateRequest(name = name, birthDate = birthDate)
-
     @Test
     @DisplayName("著者作成リクエストから著者を作成できることをテストする")
     fun testCreateAuthor() {
@@ -145,5 +139,11 @@ class AuthorServiceTest @Autowired constructor(
         assertEquals(newName, result.name)
         assertEquals(author.birthDate, result.birthDate)
     }
+
+    private fun createRequest(name: String, birthDate: LocalDate) =
+        AuthorCreateRequest(name = name, birthDate = birthDate)
+
+    private fun updateRequest(name: String, birthDate: LocalDate) =
+        AuthorUpdateRequest(name = name, birthDate = birthDate)
 }
 
