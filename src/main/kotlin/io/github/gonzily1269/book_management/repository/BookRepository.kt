@@ -2,13 +2,13 @@ package io.github.gonzily1269.book_management.repository
 
 import io.github.gonzily1269.book_management.dto.AuthorDto
 import io.github.gonzily1269.book_management.dto.BookDto
+import io.github.gonzily1269.tables.Author
+import io.github.gonzily1269.tables.Book
+import io.github.gonzily1269.tables.BookAuthor
 import org.jooq.DSLContext
-import org.jooq.impl.DSL.field
-import org.jooq.impl.DSL.table
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.dao.DataAccessResourceFailureException
 import org.springframework.stereotype.Repository
-import java.time.LocalDate
 
 /**
  * 書籍リポジトリ
@@ -25,10 +25,7 @@ class BookRepository(
     private val dsl: DSLContext,
 
     @Value("\${error.repository.book.create-failed}")
-    private val createFailedMessage: String,
-
-    @Value("\${error.repository.book.retrieve-failed}")
-    private val retrieveFailedMessage: String
+    private val createFailedMessage: String
 ) {
 
     /**
@@ -39,14 +36,14 @@ class BookRepository(
      */
     fun findById(id: Int): BookDto? {
         return dsl.select()
-            .from("book")
-            .where(field("id").eq(id))
+            .from(Book.BOOK)
+            .where(Book.BOOK.ID.eq(id))
             .fetchOne { record ->
                 BookDto(
-                    id = record.get("id", Int::class.java),
-                    title = record.get("title", String::class.java) ?: "",
-                    price = record.get("price", Int::class.java) ?: 0,
-                    publicationStatus = record.get("publication_status", String::class.java) ?: ""
+                    id = record.get(Book.BOOK.ID),
+                    title = record.get(Book.BOOK.TITLE),
+                    price = record.get(Book.BOOK.PRICE),
+                    publicationStatus = record.get(Book.BOOK.PUBLICATION_STATUS)
                 )
             }?.let { book ->
                 book.id?.let { bookId ->
@@ -63,20 +60,20 @@ class BookRepository(
      */
     fun findByAuthorId(authorId: Int): List<BookDto> {
         return dsl.select(
-            field("book.id"),
-            field("book.title"),
-            field("book.price"),
-            field("book.publication_status")
+            Book.BOOK.ID,
+            Book.BOOK.TITLE,
+            Book.BOOK.PRICE,
+            Book.BOOK.PUBLICATION_STATUS
         )
-            .from("book")
-            .join("book_author").on(field("book.id").eq(field("book_author.book_id")))
-            .where(field("book_author.author_id").eq(authorId))
+            .from(Book.BOOK)
+            .join(BookAuthor.BOOK_AUTHOR).on(Book.BOOK.ID.eq(BookAuthor.BOOK_AUTHOR.BOOK_ID))
+            .where(BookAuthor.BOOK_AUTHOR.AUTHOR_ID.eq(authorId))
             .fetch { record ->
                 BookDto(
-                    id = record.get(field("book.id"), Int::class.java),
-                    title = record.get(field("book.title"), String::class.java),
-                    price = record.get(field("book.price"), Int::class.java),
-                    publicationStatus = record.get(field("book.publication_status"), String::class.java)
+                    id = record.get(Book.BOOK.ID),
+                    title = record.get(Book.BOOK.TITLE),
+                    price = record.get(Book.BOOK.PRICE),
+                    publicationStatus = record.get(Book.BOOK.PUBLICATION_STATUS)
                 )
             }
             .mapNotNull { book ->
@@ -97,18 +94,18 @@ class BookRepository(
      * @throws IllegalStateException 書籍の作成または取得に失敗した場合
      */
     fun create(title: String, price: Int, authorIds: List<Int>, publicationStatus: String): BookDto {
-        val bookId = dsl.insertInto(table("book"))
-            .columns(field("title"), field("price"), field("publication_status"))
+        val bookId = dsl.insertInto(Book.BOOK)
+            .columns(Book.BOOK.TITLE, Book.BOOK.PRICE, Book.BOOK.PUBLICATION_STATUS)
             .values(title, price, publicationStatus)
-            .returningResult(field("id"))
+            .returningResult(Book.BOOK.ID)
             .fetchOne()
-            ?.get("id", Int::class.java)
+            ?.get(Book.BOOK.ID)
             ?: throw DataAccessResourceFailureException(createFailedMessage)
 
         // 著者との関連付け
         authorIds.forEach { authorId ->
-            dsl.insertInto(table("book_author"))
-                .columns(field("book_id"), field("author_id"))
+            dsl.insertInto(BookAuthor.BOOK_AUTHOR)
+                .columns(BookAuthor.BOOK_AUTHOR.BOOK_ID, BookAuthor.BOOK_AUTHOR.AUTHOR_ID)
                 .values(bookId, authorId)
                 .execute()
         }
@@ -136,26 +133,26 @@ class BookRepository(
      */
     fun update(id: Int, title: String, price: Int, publicationStatus: String, authorIds: List<Int>): BookDto? {
         // 書籍情報の更新
-        val book = dsl.update(table("book"))
-            .set(field("title"), title)
-            .set(field("price"), price)
-            .set(field("publication_status"), publicationStatus)
-            .where(field("id").eq(id))
-            .returningResult(field("id"), field("title"), field("price"), field("publication_status"))
+        val book = dsl.update(Book.BOOK)
+            .set(Book.BOOK.TITLE, title)
+            .set(Book.BOOK.PRICE, price)
+            .set(Book.BOOK.PUBLICATION_STATUS, publicationStatus)
+            .where(Book.BOOK.ID.eq(id))
+            .returningResult(Book.BOOK.ID, Book.BOOK.TITLE, Book.BOOK.PRICE, Book.BOOK.PUBLICATION_STATUS)
             .fetchOne { record ->
                 BookDto(
-                    id = record.get(field("id"), Int::class.java),
-                    title = record.get(field("title"), String::class.java),
-                    price = record.get(field("price"), Int::class.java),
-                    publicationStatus = record.get(field("publication_status"), String::class.java)
+                    id = record.get(Book.BOOK.ID),
+                    title = record.get(Book.BOOK.TITLE),
+                    price = record.get(Book.BOOK.PRICE),
+                    publicationStatus = record.get(Book.BOOK.PUBLICATION_STATUS)
                 )
             } ?: return null
 
         // 著者関連付けの差分更新
-        val currentAuthorIds = dsl.select(field("author_id"))
-            .from("book_author")
-            .where(field("book_id").eq(id))
-            .fetch(field("author_id"), Int::class.java)
+        val currentAuthorIds = dsl.select(BookAuthor.BOOK_AUTHOR.AUTHOR_ID)
+            .from(BookAuthor.BOOK_AUTHOR)
+            .where(BookAuthor.BOOK_AUTHOR.BOOK_ID.eq(id))
+            .fetch(BookAuthor.BOOK_AUTHOR.AUTHOR_ID)
             .toSet()
 
         // 差分を計算するために新しい著者IDをセットに変換
@@ -163,15 +160,15 @@ class BookRepository(
 
         // 削除が必要な著者
         (currentAuthorIds - newAuthorIds).forEach { authorId ->
-            dsl.deleteFrom(table("book_author"))
-                .where(field("book_id").eq(id).and(field("author_id").eq(authorId)))
+            dsl.deleteFrom(BookAuthor.BOOK_AUTHOR)
+                .where(BookAuthor.BOOK_AUTHOR.BOOK_ID.eq(id).and(BookAuthor.BOOK_AUTHOR.AUTHOR_ID.eq(authorId)))
                 .execute()
         }
 
         // 追加が必要な著者
         (newAuthorIds - currentAuthorIds).forEach { authorId ->
-            dsl.insertInto(table("book_author"))
-                .columns(field("book_id"), field("author_id"))
+            dsl.insertInto(BookAuthor.BOOK_AUTHOR)
+                .columns(BookAuthor.BOOK_AUTHOR.BOOK_ID, BookAuthor.BOOK_AUTHOR.AUTHOR_ID)
                 .values(id, authorId)
                 .execute()
         }
@@ -187,18 +184,18 @@ class BookRepository(
      */
     private fun findAuthorsByBookId(bookId: Int): List<AuthorDto> {
         return dsl.select(
-            field("author.id"),
-            field("author.name"),
-            field("author.birth_date")
+            Author.AUTHOR.ID,
+            Author.AUTHOR.NAME,
+            Author.AUTHOR.BIRTH_DATE
         )
-            .from("author")
-            .join("book_author").on(field("author.id").eq(field("book_author.author_id")))
-            .where(field("book_author.book_id").eq(bookId))
+            .from(Author.AUTHOR)
+            .join(BookAuthor.BOOK_AUTHOR).on(Author.AUTHOR.ID.eq(BookAuthor.BOOK_AUTHOR.AUTHOR_ID))
+            .where(BookAuthor.BOOK_AUTHOR.BOOK_ID.eq(bookId))
             .fetch { record ->
                 AuthorDto(
-                    id = record.get(field("author.id"), Int::class.java),
-                    name = record.get(field("author.name"), String::class.java) ?: "",
-                    birthDate = record.get(field("author.birth_date"), LocalDate::class.java) ?: LocalDate.now()
+                    id = record.get(Author.AUTHOR.ID),
+                    name = record.get(Author.AUTHOR.NAME),
+                    birthDate = record.get(Author.AUTHOR.BIRTH_DATE)
                 )
             }
     }

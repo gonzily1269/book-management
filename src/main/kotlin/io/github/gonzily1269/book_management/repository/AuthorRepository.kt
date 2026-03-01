@@ -1,9 +1,8 @@
 package io.github.gonzily1269.book_management.repository
 
 import io.github.gonzily1269.book_management.dto.AuthorDto
+import io.github.gonzily1269.tables.Author
 import org.jooq.DSLContext
-import org.jooq.impl.DSL.field
-import org.jooq.impl.DSL.table
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.dao.DataAccessResourceFailureException
 import org.springframework.stereotype.Repository
@@ -35,15 +34,15 @@ class AuthorRepository(
      * @throws DataAccessResourceFailureException 著者の作成に失敗した場合（DBの不良など）
      */
     fun create(name: String, birthDate: LocalDate): AuthorDto {
-        return dsl.insertInto(table("author"))
-            .columns(field("name"), field("birth_date"))
+        return dsl.insertInto(Author.AUTHOR)
+            .columns(Author.AUTHOR.NAME, Author.AUTHOR.BIRTH_DATE)
             .values(name, birthDate)
-            .returningResult(field("id"), field("name"), field("birth_date"))
+            .returningResult(Author.AUTHOR.ID, Author.AUTHOR.NAME, Author.AUTHOR.BIRTH_DATE)
             .fetchOne { record ->
                 AuthorDto(
-                    id = record.get("id", Int::class.java),
-                    name = record.get("name", String::class.java),
-                    birthDate = record.get("birth_date", LocalDate::class.java)
+                    id = record.get(Author.AUTHOR.ID),
+                    name = record.get(Author.AUTHOR.NAME),
+                    birthDate = record.get(Author.AUTHOR.BIRTH_DATE)
                 )
             }
             ?: throw DataAccessResourceFailureException(createFailedMessage)
@@ -58,16 +57,16 @@ class AuthorRepository(
      * @return 更新された著者DTO、見つからない場合はnull
      */
     fun update(id: Int, name: String, birthDate: LocalDate): AuthorDto? {
-        return dsl.update(table("author"))
-            .set(field("name"), name)
-            .set(field("birth_date"), birthDate)
-            .where(field("id").eq(id))
-            .returningResult(field("id"), field("name"), field("birth_date"))
+        return dsl.update(Author.AUTHOR)
+            .set(Author.AUTHOR.NAME, name)
+            .set(Author.AUTHOR.BIRTH_DATE, birthDate)
+            .where(Author.AUTHOR.ID.eq(id))
+            .returningResult(Author.AUTHOR.ID, Author.AUTHOR.NAME, Author.AUTHOR.BIRTH_DATE)
             .fetchOne { record ->
                 AuthorDto(
-                    id = record.get("id", Int::class.java),
-                    name = record.get("name", String::class.java),
-                    birthDate = record.get("birth_date", LocalDate::class.java)
+                    id = record.get(Author.AUTHOR.ID),
+                    name = record.get(Author.AUTHOR.NAME),
+                    birthDate = record.get(Author.AUTHOR.BIRTH_DATE)
                 )
             }
     }
