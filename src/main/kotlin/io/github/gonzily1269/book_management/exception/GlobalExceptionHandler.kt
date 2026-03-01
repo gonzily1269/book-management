@@ -59,9 +59,9 @@ class GlobalExceptionHandler {
     }
 
     /**
-        * 業務ロジックエラーをハンドリング
-        *
-        * 業務ルール違反はサーバー障害ではないため、クライアントエラー(400)として返す。
+     * 業務ロジックエラーをハンドリング
+     *
+     * 業務ルール違反はサーバー障害ではないため、クライアントエラー(400)として返す。
      */
     @ExceptionHandler(IllegalStateException::class)
     fun handleIllegalStateException(
@@ -114,6 +114,6 @@ data class ErrorResponse(
     val status: Int,
     val error: String,
     val message: String,
-    val path: String? = null,
+    val path: String,
     val errors: Map<String, String> = emptyMap()
 )
