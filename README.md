@@ -86,33 +86,31 @@ git clone https://github.com/gonzily1269/book-management.git
 cd book-management
 ```
 
-1. Dockerを使用してPostgreSQLを起動
+2. Dockerを使用してPostgreSQLを起動
 
 ```bash
 docker compose up -d
 ```
 
-1. JOOQコード生成を実行
-
-cleanタスクを実行
+3. cleanタスクを実行
 
 ```bash
 ./gradlew clean
 ```
 
-JOOQコード生成タスクを実行
+4. JOOQコード生成タスクを実行
 
 ```bash
 ./gradlew jooqCodegen
 ```
 
-buildタスクを実行
+5. buildタスクを実行
 
 ```bash
 ./gradlew build
 ```
 
-1. アプリケーションをビルド・実行
+6. アプリケーションをビルド・実行
 
 ```bash
 ./gradlew bootRun
