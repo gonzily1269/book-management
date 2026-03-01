@@ -11,6 +11,8 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
+import org.springframework.test.web.servlet.MvcResult
+import org.springframework.test.web.servlet.ResultActions
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
@@ -32,23 +34,48 @@ import kotlin.test.assertEquals
 class AuthorControllerTest @Autowired constructor(
     private val mockMvc: MockMvc
 ) {
-    @Test
-    @DisplayName("POST /api/authors で著者を作成できることをテストする")
-    fun testCreateAuthor() {
-        // Given: 著者作成リクエスト (JSON 文字列を直接定義)
-        val requestJson = """
+    private val authorEndpoint = "/api/authors"
+
+    private fun buildAuthorJson(name: String, birthDate: String) =
+        """
             {
-                "name": "太郎",
-                "birthDate": "1990-01-15"
+                "name": "$name",
+                "birthDate": "$birthDate"
             }
         """.trimIndent()
 
-        // When & Then: POST リクエストを送信して著者を作成
+    private fun createAuthorRequest(
+        name: String = "太郎",
+        birthDate: String = "1990-01-15"
+    ): ResultActions =
         mockMvc.perform(
-            post("/api/authors")
+            post(authorEndpoint)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(requestJson) // 直接文字列を渡す
+                .content(buildAuthorJson(name, birthDate))
         )
+
+    private fun createAuthor(name: String = "太郎", birthDate: String = "1990-01-15"): MvcResult =
+        createAuthorRequest(name, birthDate).andReturn()
+
+    private fun updateAuthorRequest(
+        authorId: Int,
+        name: String = "次郎",
+        birthDate: String = "1995-03-10"
+    ): ResultActions =
+        mockMvc.perform(
+            put("$authorEndpoint/$authorId")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(buildAuthorJson(name, birthDate))
+        )
+
+    private fun extractId(responseJson: String): Int =
+        """"id":\s*(\d+)""".toRegex().find(responseJson)?.groupValues?.get(1)?.toInt()
+            ?: error("レスポンスからIDを抽出できませんでした: $responseJson")
+
+    @Test
+    @DisplayName("POST /api/authors で著者を作成できることをテストする")
+    fun testCreateAuthor() {
+        createAuthorRequest()
             .andExpect(status().isCreated)
             .andExpect(jsonPath("$.id").isNumber)
             .andExpect(jsonPath("$.name").value("太郎"))
@@ -58,20 +85,7 @@ class AuthorControllerTest @Autowired constructor(
     @Test
     @DisplayName("POST /api/authors で空の名前ではバリデーションエラーになることをテストする")
     fun testCreateAuthorWithEmptyName() {
-        // Given: 空の名前を含む JSON
-        val requestJson = """
-            {
-                "name": "",
-                "birthDate": "1990-01-15"
-            }
-        """.trimIndent()
-
-        // When & Then
-        mockMvc.perform(
-            post("/api/authors")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(requestJson)
-        )
+        createAuthorRequest(name = "")
             .andExpect(status().isBadRequest)
             .andExpect(jsonPath("$.error").value("バリデーションエラー"))
     }
@@ -79,21 +93,8 @@ class AuthorControllerTest @Autowired constructor(
     @Test
     @DisplayName("POST /api/authors で未来の生年月日ではバリデーションエラーになることをテストする")
     fun testCreateAuthorWithFutureBirthDate() {
-        // Given: 未来の日付を動的に生成
         val futureDate = LocalDate.now().plusYears(1)
-        val requestJson = """
-            {
-                "name": "太郎",
-                "birthDate": "$futureDate"
-            }
-        """.trimIndent()
-
-        // When & Then
-        mockMvc.perform(
-            post("/api/authors")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(requestJson)
-        )
+        createAuthorRequest(birthDate = futureDate.toString())
             .andExpect(status().isBadRequest)
             .andExpect(jsonPath("$.error").value("バリデーションエラー"))
     }
@@ -101,33 +102,10 @@ class AuthorControllerTest @Autowired constructor(
     @Test
     @DisplayName("PUT /api/authors/{id} で著者を更新できることをテストする")
     fun testUpdateAuthor() {
-        // 1. 著者を作成し、レスポンスを文字列として取得
-        val createJson = """{"name": "太郎", "birthDate": "1990-01-15"}"""
-        val createResponse = mockMvc.perform(
-            post("/api/authors")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(createJson)
-        ).andReturn().response.contentAsString
+        val createResponse = createAuthor().response.contentAsString
+        val authorId = extractId(createResponse)
 
-        // 正規表現で "id":123 のような数値部分だけを抜き出す
-        val idRegex = """"id":\s*(\d+)""".toRegex()
-        val authorId = idRegex.find(createResponse)?.groupValues?.get(1)?.toInt()
-            ?: throw IllegalStateException("レスポンスからIDを抽出できませんでした: $createResponse")
-
-        // 2. 更新用 JSON (トリプルクォート)
-        val updateJson = """
-            {
-                "name": "次郎",
-                "birthDate": "1995-03-10"
-            }
-        """.trimIndent()
-
-        // When & Then: 抽出した authorId を使って PUT リクエスト
-        mockMvc.perform(
-            put("/api/authors/$authorId")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(updateJson)
-        )
+        updateAuthorRequest(authorId)
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.id").value(authorId))
             .andExpect(jsonPath("$.name").value("次郎"))
@@ -137,15 +115,11 @@ class AuthorControllerTest @Autowired constructor(
     @Test
     @DisplayName("PUT /api/authors/{id} で存在しない著者を更新しようとすると404が返されることをテストする")
     fun testUpdateNonExistentAuthor() {
-        // Given
         val nonExistentId = 99999
-        val updateJson = """{"name": "新しい名前", "birthDate": "${LocalDate.now()}"}"""
-
-        // When & Then
-        mockMvc.perform(
-            put("/api/authors/$nonExistentId")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(updateJson)
+        updateAuthorRequest(
+            authorId = nonExistentId,
+            name = "新しい名前",
+            birthDate = LocalDate.now().toString()
         )
             .andExpect(status().isNotFound)
     }
@@ -153,24 +127,10 @@ class AuthorControllerTest @Autowired constructor(
     @Test
     @DisplayName("PUT /api/authors/{id} で空の名前ではバリデーションエラーになることをテストする")
     fun testUpdateAuthorWithEmptyName() {
-        // 1. 著者を作成
-        val createJson = """{"name": "太郎", "birthDate": "1990-01-15"}"""
-        val createResponse = mockMvc.perform(
-            post("/api/authors").contentType(MediaType.APPLICATION_JSON).content(createJson)
-        ).andReturn().response.contentAsString
+        val createResponse = createAuthor().response.contentAsString
+        val authorId = extractId(createResponse)
 
-        // IDを抽出
-        val authorId = """"id":\s*(\d+)""".toRegex().find(createResponse)?.groupValues?.get(1)
-
-        // 2. 空の名前の更新 JSON
-        val updateJson = """{"name": "", "birthDate": "1990-01-15"}"""
-
-        // When & Then
-        mockMvc.perform(
-            put("/api/authors/$authorId")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(updateJson)
-        )
+        updateAuthorRequest(authorId = authorId, name = "", birthDate = "1990-01-15")
             .andExpect(status().isBadRequest)
             .andExpect(jsonPath("$.error").value("バリデーションエラー"))
     }
@@ -178,14 +138,11 @@ class AuthorControllerTest @Autowired constructor(
     @Test
     @DisplayName("複数の著者を作成できることをテストする")
     fun testCreateMultipleAuthors() {
-        val request1 = """{"name": "太郎", "birthDate": "1990-01-15"}"""
-        val request2 = """{"name": "花子", "birthDate": "1985-06-20"}"""
-
-        mockMvc.perform(post("/api/authors").contentType(MediaType.APPLICATION_JSON).content(request1))
+        createAuthorRequest()
             .andExpect(status().isCreated)
             .andExpect(jsonPath("$.name").value("太郎"))
 
-        mockMvc.perform(post("/api/authors").contentType(MediaType.APPLICATION_JSON).content(request2))
+        createAuthorRequest("花子", "1985-06-20")
             .andExpect(status().isCreated)
             .andExpect(jsonPath("$.name").value("花子"))
     }

@@ -14,6 +14,8 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
+import org.springframework.test.web.servlet.MvcResult
+import org.springframework.test.web.servlet.ResultActions
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
@@ -32,6 +34,8 @@ class BookControllerTest @Autowired constructor(
 
     private var testAuthorId = 0
     private var testAuthorId2 = 0
+    private val booksEndpoint = "/api/books"
+    private val byAuthorEndpoint = "/api/books/by-author"
 
     @BeforeEach
     fun setUp() {
@@ -45,29 +49,63 @@ class BookControllerTest @Autowired constructor(
         testAuthorId2 = author2.id!!
     }
 
-    // ID抽出用の共通関数
     private fun extractId(json: String): Int {
         return """"id":\s*(\d+)""".toRegex().find(json)?.groupValues?.get(1)?.toInt()
             ?: throw IllegalStateException("IDが見つかりません: $json")
     }
 
-    @Test
-    @DisplayName("POST /api/books で書籍を作成できることをテストする")
-    fun testCreateBook() {
-        val requestJson = """
+    private fun buildBookJson(
+        title: String,
+        price: Int,
+        authorIds: List<Int>,
+        publicationStatus: String
+    ) =
+        """
             {
-                "title": "Spring Boot入門",
-                "price": 3000,
-                "authorIds": [$testAuthorId],
-                "publicationStatus": "PUBLISHED"
+                "title": "$title",
+                "price": $price,
+                "authorIds": ${authorIds.joinToString(prefix = "[", postfix = "]")},
+                "publicationStatus": "$publicationStatus"
             }
         """.trimIndent()
 
+    private fun createBookRequest(
+        title: String = "Spring Boot入門",
+        price: Int = 3000,
+        authorIds: List<Int> = listOf(testAuthorId),
+        publicationStatus: String = "PUBLISHED"
+    ): ResultActions =
         mockMvc.perform(
-            post("/api/books")
+            post(booksEndpoint)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(requestJson)
+                .content(buildBookJson(title, price, authorIds, publicationStatus))
         )
+
+    private fun createBook(
+        title: String = "Spring Boot入門",
+        price: Int = 3000,
+        authorIds: List<Int> = listOf(testAuthorId),
+        publicationStatus: String = "PUBLISHED"
+    ): MvcResult =
+        createBookRequest(title, price, authorIds, publicationStatus).andReturn()
+
+    private fun updateBookRequest(
+        bookId: Int,
+        title: String = "新しいタイトル",
+        price: Int = 2000,
+        authorIds: List<Int> = listOf(testAuthorId),
+        publicationStatus: String = "UNPUBLISHED"
+    ): ResultActions =
+        mockMvc.perform(
+            put("$booksEndpoint/$bookId")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(buildBookJson(title, price, authorIds, publicationStatus))
+        )
+
+    @Test
+    @DisplayName("POST /api/books で書籍を作成できることをテストする")
+    fun testCreateBook() {
+        createBookRequest()
             .andExpect(status().isCreated)
             .andExpect(jsonPath("$.id").isNumber)
             .andExpect(jsonPath("$.title").value("Spring Boot入門"))
@@ -77,19 +115,10 @@ class BookControllerTest @Autowired constructor(
     @Test
     @DisplayName("POST /api/books で複数の著者を持つ書籍を作成できることをテストする")
     fun testCreateBookWithMultipleAuthors() {
-        val requestJson = """
-            {
-                "title": "Kotlin完全ガイド",
-                "price": 4000,
-                "authorIds": [$testAuthorId, $testAuthorId2],
-                "publicationStatus": "PUBLISHED"
-            }
-        """.trimIndent()
-
-        mockMvc.perform(
-            post("/api/books")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(requestJson)
+        createBookRequest(
+            title = "Kotlin完全ガイド",
+            price = 4000,
+            authorIds = listOf(testAuthorId, testAuthorId2)
         )
             .andExpect(status().isCreated)
             .andExpect(jsonPath("$.authors.length()").value(2))
@@ -98,20 +127,7 @@ class BookControllerTest @Autowired constructor(
     @Test
     @DisplayName("POST /api/books で空のタイトルではバリデーションエラーになることをテストする")
     fun testCreateBookWithEmptyTitle() {
-        val requestJson = """
-            {
-                "title": "",
-                "price": 3000,
-                "authorIds": [$testAuthorId],
-                "publicationStatus": "PUBLISHED"
-            }
-        """.trimIndent()
-
-        mockMvc.perform(
-            post("/api/books")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(requestJson)
-        )
+        createBookRequest(title = "")
             .andExpect(status().isBadRequest)
             .andExpect(jsonPath("$.error").value("バリデーションエラー"))
     }
@@ -119,28 +135,13 @@ class BookControllerTest @Autowired constructor(
     @Test
     @DisplayName("PUT /api/books/{id} で書籍を更新できることをテストする")
     fun testUpdateBook() {
-        val createJson =
-            """{"title": "元のタイトル", "price": 1000, "authorIds": [$testAuthorId], "publicationStatus": "UNPUBLISHED"}"""
-        val createResponse = mockMvc.perform(
-            post("/api/books").contentType(MediaType.APPLICATION_JSON).content(createJson)
-        ).andReturn().response.contentAsString
+        val createResponse = createBook("元のタイトル", 1000, listOf(testAuthorId), "UNPUBLISHED")
+            .response
+            .contentAsString
 
         val bookId = extractId(createResponse)
 
-        val updateJson = """
-            {
-                "title": "新しいタイトル",
-                "price": 2000,
-                "authorIds": [$testAuthorId],
-                "publicationStatus": "UNPUBLISHED"
-            }
-        """.trimIndent()
-
-        mockMvc.perform(
-            put("/api/books/$bookId")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(updateJson)
-        )
+        updateBookRequest(bookId)
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.title").value("新しいタイトル"))
             .andExpect(jsonPath("$.price").value(2000))
@@ -149,21 +150,17 @@ class BookControllerTest @Autowired constructor(
     @Test
     @DisplayName("PUT /api/books/{id} で出版済みから未出版に変更するとエラーになることをテストする")
     fun testCannotUnpublishPublishedBook() {
-        val createJson =
-            """{"title": "出版済み本", "price": 3000, "authorIds": [$testAuthorId], "publicationStatus": "PUBLISHED"}"""
-        val createResponse = mockMvc.perform(
-            post("/api/books").contentType(MediaType.APPLICATION_JSON).content(createJson)
-        ).andReturn().response.contentAsString
+        val createResponse = createBook("出版済み本", 3000, listOf(testAuthorId), "PUBLISHED")
+            .response
+            .contentAsString
 
         val bookId = extractId(createResponse)
 
-        val updateJson =
-            """{"title": "出版済み本", "price": 3000, "authorIds": [$testAuthorId], "publicationStatus": "UNPUBLISHED"}"""
-
-        mockMvc.perform(
-            put("/api/books/$bookId")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(updateJson)
+        updateBookRequest(
+            bookId = bookId,
+            title = "出版済み本",
+            price = 3000,
+            publicationStatus = "UNPUBLISHED"
         )
             .andExpect(status().isBadRequest)
             .andExpect(jsonPath("$.error").value("業務ロジックエラー"))
@@ -173,19 +170,12 @@ class BookControllerTest @Autowired constructor(
     @DisplayName("PUT /api/books/{id} で存在しない書籍を更新しようとすると404が返されることをテストする")
     fun testUpdateNonExistentBook() {
         val nonExistentId = 99999
-        val updateJson = """
-            {
-                "title": "更新タイトル",
-                "price": 2000,
-                "authorIds": [$testAuthorId],
-                "publicationStatus": "PUBLISHED"
-            }
-        """.trimIndent()
 
-        mockMvc.perform(
-            put("/api/books/$nonExistentId")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(updateJson)
+        updateBookRequest(
+            bookId = nonExistentId,
+            title = "更新タイトル",
+            price = 2000,
+            publicationStatus = "PUBLISHED"
         )
             .andExpect(status().isNotFound)
     }
@@ -193,15 +183,10 @@ class BookControllerTest @Autowired constructor(
     @Test
     @DisplayName("GET /api/books/by-author/{authorId} で著者の書籍を検索できることをテストする")
     fun testGetBooksByAuthorId() {
-        val book1 =
-            """{"title": "本1", "price": 1000, "authorIds": [$testAuthorId], "publicationStatus": "PUBLISHED"}"""
-        val book2 =
-            """{"title": "本2", "price": 2000, "authorIds": [$testAuthorId], "publicationStatus": "UNPUBLISHED"}"""
+        createBook("本1", 1000, listOf(testAuthorId), "PUBLISHED")
+        createBook("本2", 2000, listOf(testAuthorId), "UNPUBLISHED")
 
-        mockMvc.perform(post("/api/books").contentType(MediaType.APPLICATION_JSON).content(book1))
-        mockMvc.perform(post("/api/books").contentType(MediaType.APPLICATION_JSON).content(book2))
-
-        mockMvc.perform(get("/api/books/by-author/$testAuthorId"))
+        mockMvc.perform(get("$byAuthorEndpoint/$testAuthorId"))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.length()").value(2))
     }
