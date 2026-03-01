@@ -59,7 +59,9 @@ class GlobalExceptionHandler {
     }
 
     /**
-     * 業務ロジックエラーをハンドリング
+        * 業務ロジックエラーをハンドリング
+        *
+        * 業務ルール違反はサーバー障害ではないため、クライアントエラー(400)として返す。
      */
     @ExceptionHandler(IllegalStateException::class)
     fun handleIllegalStateException(

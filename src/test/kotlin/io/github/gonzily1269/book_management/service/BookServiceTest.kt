@@ -3,6 +3,7 @@ package io.github.gonzily1269.book_management.service
 import io.github.gonzily1269.book_management.dto.AuthorCreateRequest
 import io.github.gonzily1269.book_management.dto.BookCreateRequest
 import io.github.gonzily1269.book_management.dto.BookUpdateRequest
+import io.github.gonzily1269.book_management.dto.PublicationStatus
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
@@ -50,7 +51,7 @@ class BookServiceTest @Autowired constructor(
     @Test
     @DisplayName("書籍作成リクエストから書籍を作成できることをテストする")
     fun testCreateBook() {
-        val request = createBookRequest("Spring Boot入門", 3000, "PUBLISHED", listOf(testAuthorId))
+        val request = createBookRequest("Spring Boot入門", 3000, PublicationStatus.PUBLISHED, listOf(testAuthorId))
         val result = bookService.createBook(request)
 
         assertNotNull(result.id)
@@ -63,7 +64,7 @@ class BookServiceTest @Autowired constructor(
     @Test
     @DisplayName("複数の著者を持つ書籍を作成できることをテストする")
     fun testCreateBookWithMultipleAuthors() {
-        val request = createBookRequest("Kotlin完全ガイド", 4000, "PUBLISHED", listOf(testAuthorId, testAuthorId2))
+        val request = createBookRequest("Kotlin完全ガイド", 4000, PublicationStatus.PUBLISHED, listOf(testAuthorId, testAuthorId2))
         val result = bookService.createBook(request)
 
         assertNotNull(result.id)
@@ -74,13 +75,13 @@ class BookServiceTest @Autowired constructor(
     @DisplayName("著者IDで書籍を検索できることをテストする")
     fun testGetBooksByAuthorId() {
         val book1 = bookService.createBook(
-            createBookRequest("本1", 1000, "PUBLISHED", listOf(testAuthorId))
+            createBookRequest("本1", 1000, PublicationStatus.PUBLISHED, listOf(testAuthorId))
         )
         val book2 = bookService.createBook(
-            createBookRequest("本2", 2000, "UNPUBLISHED", listOf(testAuthorId))
+            createBookRequest("本2", 2000, PublicationStatus.UNPUBLISHED, listOf(testAuthorId))
         )
         bookService.createBook(
-            createBookRequest("本3", 3000, "PUBLISHED", listOf(testAuthorId2))
+            createBookRequest("本3", 3000, PublicationStatus.PUBLISHED, listOf(testAuthorId2))
         )
 
         val result = bookService.getBooksByAuthorId(testAuthorId)
@@ -101,11 +102,11 @@ class BookServiceTest @Autowired constructor(
     @DisplayName("書籍情報を更新できることをテストする")
     fun testUpdateBook() {
         val createdBook = bookService.createBook(
-            createBookRequest("元のタイトル", 1000, "UNPUBLISHED", listOf(testAuthorId))
+            createBookRequest("元のタイトル", 1000, PublicationStatus.UNPUBLISHED, listOf(testAuthorId))
         )
         val bookId = createdBook.id!!
 
-        val updateRequest = updateBookRequest("新しいタイトル", 2000, "UNPUBLISHED", listOf(testAuthorId))
+        val updateRequest = updateBookRequest("新しいタイトル", 2000, PublicationStatus.UNPUBLISHED, listOf(testAuthorId))
         val result = bookService.updateBook(bookId, updateRequest)
 
         assertNotNull(result)
@@ -118,7 +119,7 @@ class BookServiceTest @Autowired constructor(
     @DisplayName("存在しない書籍を更新しようとするとnullが返されることをテストする")
     fun testUpdateNonExistentBook() {
         val nonExistentId = 99999
-        val updateRequest = updateBookRequest("タイトル", 1000, "PUBLISHED", listOf(testAuthorId))
+        val updateRequest = updateBookRequest("タイトル", 1000, PublicationStatus.PUBLISHED, listOf(testAuthorId))
         val result = bookService.updateBook(nonExistentId, updateRequest)
         assertNull(result)
     }
@@ -127,11 +128,11 @@ class BookServiceTest @Autowired constructor(
     @DisplayName("出版済みから未出版への変更ができないことをテストする")
     fun testCannotUnpublishPublishedBook() {
         val createdBook = bookService.createBook(
-            createBookRequest("出版済み本", 3000, "PUBLISHED", listOf(testAuthorId))
+            createBookRequest("出版済み本", 3000, PublicationStatus.PUBLISHED, listOf(testAuthorId))
         )
         val bookId = createdBook.id!!
 
-        val updateRequest = updateBookRequest("出版済み本", 3000, "UNPUBLISHED", listOf(testAuthorId))
+        val updateRequest = updateBookRequest("出版済み本", 3000, PublicationStatus.UNPUBLISHED, listOf(testAuthorId))
 
         assertThrows<IllegalStateException> {
             bookService.updateBook(bookId, updateRequest)
@@ -142,42 +143,42 @@ class BookServiceTest @Autowired constructor(
     @DisplayName("未出版から出版への変更ができることをテストする")
     fun testCanPublishUnpublishedBook() {
         val createdBook = bookService.createBook(
-            createBookRequest("未出版本", 2000, "UNPUBLISHED", listOf(testAuthorId))
+            createBookRequest("未出版本", 2000, PublicationStatus.UNPUBLISHED, listOf(testAuthorId))
         )
         val bookId = createdBook.id!!
 
-        val updateRequest = updateBookRequest("未出版本", 2000, "PUBLISHED", listOf(testAuthorId))
+        val updateRequest = updateBookRequest("未出版本", 2000, PublicationStatus.PUBLISHED, listOf(testAuthorId))
         val result = bookService.updateBook(bookId, updateRequest)
 
         assertNotNull(result)
-        assertEquals("PUBLISHED", result.publicationStatus)
+        assertEquals(PublicationStatus.PUBLISHED, result.publicationStatus)
     }
 
     @Test
     @DisplayName("出版状態を変更せずに更新できることをテストする")
     fun testUpdatePublishedBookWithoutChangingStatus() {
         val createdBook = bookService.createBook(
-            createBookRequest("出版済み本", 1000, "PUBLISHED", listOf(testAuthorId))
+            createBookRequest("出版済み本", 1000, PublicationStatus.PUBLISHED, listOf(testAuthorId))
         )
         val bookId = createdBook.id!!
 
-        val updateRequest = updateBookRequest("新しいタイトル", 3000, "PUBLISHED", listOf(testAuthorId))
+        val updateRequest = updateBookRequest("新しいタイトル", 3000, PublicationStatus.PUBLISHED, listOf(testAuthorId))
         val result = bookService.updateBook(bookId, updateRequest)
 
         assertNotNull(result)
         assertEquals("新しいタイトル", result.title)
         assertEquals(3000, result.price)
-        assertEquals("PUBLISHED", result.publicationStatus)
+        assertEquals(PublicationStatus.PUBLISHED, result.publicationStatus)
     }
 
     @Test
     @DisplayName("複数の書籍を作成・検索できることをテストする")
     fun testCreateAndGetMultipleBooks() {
         val book1 = bookService.createBook(
-            createBookRequest("本1", 1000, "PUBLISHED", listOf(testAuthorId))
+            createBookRequest("本1", 1000, PublicationStatus.PUBLISHED, listOf(testAuthorId))
         )
         val book2 = bookService.createBook(
-            createBookRequest("本2", 2000, "UNPUBLISHED", listOf(testAuthorId))
+            createBookRequest("本2", 2000, PublicationStatus.UNPUBLISHED, listOf(testAuthorId))
         )
 
         val result = bookService.getBooksByAuthorId(testAuthorId)
@@ -190,11 +191,11 @@ class BookServiceTest @Autowired constructor(
     @DisplayName("書籍の著者を変更できることをテストする")
     fun testUpdateBookAuthors() {
         val createdBook = bookService.createBook(
-            createBookRequest("本", 1000, "PUBLISHED", listOf(testAuthorId))
+            createBookRequest("本", 1000, PublicationStatus.PUBLISHED, listOf(testAuthorId))
         )
         val bookId = createdBook.id!!
 
-        val updateRequest = updateBookRequest("本", 1000, "PUBLISHED", listOf(testAuthorId2))
+        val updateRequest = updateBookRequest("本", 1000, PublicationStatus.PUBLISHED, listOf(testAuthorId2))
         val result = bookService.updateBook(bookId, updateRequest)
 
         assertNotNull(result)
@@ -202,10 +203,60 @@ class BookServiceTest @Autowired constructor(
         assertEquals(testAuthorId2, result.authors[0].id)
     }
 
+    @Test
+    @DisplayName("存在しない著者IDで書籍を作成しようとすると例外になることをテストする")
+    fun testCreateBookWithInvalidAuthorId() {
+        assertThrows<IllegalStateException> {
+            bookService.createBook(
+                createBookRequest("不正著者本", 1000, PublicationStatus.PUBLISHED, listOf(99999))
+            )
+        }
+    }
+
+    @Test
+    @DisplayName("重複した著者IDで書籍を作成しようとすると例外になることをテストする")
+    fun testCreateBookWithDuplicateAuthorIds() {
+        assertThrows<IllegalStateException> {
+            bookService.createBook(
+                createBookRequest("重複著者本", 1000, PublicationStatus.PUBLISHED, listOf(testAuthorId, testAuthorId))
+            )
+        }
+    }
+
+    @Test
+    @DisplayName("更新時に存在しない著者IDを指定すると例外になることをテストする")
+    fun testUpdateBookWithInvalidAuthorId() {
+        val createdBook = bookService.createBook(
+            createBookRequest("本", 1000, PublicationStatus.PUBLISHED, listOf(testAuthorId))
+        )
+
+        assertThrows<IllegalStateException> {
+            bookService.updateBook(
+                createdBook.id!!,
+                updateBookRequest("本", 1000, PublicationStatus.PUBLISHED, listOf(99999))
+            )
+        }
+    }
+
+    @Test
+    @DisplayName("更新時に重複した著者IDを指定すると例外になることをテストする")
+    fun testUpdateBookWithDuplicateAuthorIds() {
+        val createdBook = bookService.createBook(
+            createBookRequest("本", 1000, PublicationStatus.PUBLISHED, listOf(testAuthorId))
+        )
+
+        assertThrows<IllegalStateException> {
+            bookService.updateBook(
+                createdBook.id!!,
+                updateBookRequest("本", 1000, PublicationStatus.PUBLISHED, listOf(testAuthorId, testAuthorId))
+            )
+        }
+    }
+
     private fun createBookRequest(
         title: String,
         price: Int,
-        publicationStatus: String,
+        publicationStatus: PublicationStatus,
         authorIds: List<Int>
     ) = BookCreateRequest(
         title = title,
@@ -217,7 +268,7 @@ class BookServiceTest @Autowired constructor(
     private fun updateBookRequest(
         title: String,
         price: Int,
-        publicationStatus: String,
+        publicationStatus: PublicationStatus,
         authorIds: List<Int>
     ) = BookUpdateRequest(
         title = title,

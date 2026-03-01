@@ -1,6 +1,7 @@
 package io.github.gonzily1269.book_management.repository
 
 import io.github.gonzily1269.book_management.dto.AuthorDto
+import io.github.gonzily1269.book_management.dto.PublicationStatus
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
@@ -45,7 +46,7 @@ class BookRepositoryTest @Autowired constructor(
         val title = "Spring Boot入門"
         val price = 3000
         val authorIds = listOf(testAuthor.id!!)
-        val publicationStatus = "PUBLISHED"
+        val publicationStatus = PublicationStatus.PUBLISHED
 
         val result = createBook(title, price, authorIds, publicationStatus)
 
@@ -63,7 +64,7 @@ class BookRepositoryTest @Autowired constructor(
         val title = "Kotlin完全ガイド"
         val price = 4000
         val authorIds = listOf(testAuthor.id!!, testAuthor2.id!!)
-        val publicationStatus = "PUBLISHED"
+        val publicationStatus = PublicationStatus.PUBLISHED
 
         val result = createBook(title, price, authorIds, publicationStatus)
 
@@ -77,7 +78,7 @@ class BookRepositoryTest @Autowired constructor(
     @Test
     @DisplayName("IDで書籍を検索できることをテストする")
     fun testFindBookById() {
-        val createdBook = createBook("Kotlin入門", 2000, listOf(testAuthor.id!!), "PUBLISHED")
+        val createdBook = createBook("Kotlin入門", 2000, listOf(testAuthor.id!!), PublicationStatus.PUBLISHED)
         val bookId = createdBook.id!!
 
         val result = bookRepository.findById(bookId)
@@ -99,9 +100,9 @@ class BookRepositoryTest @Autowired constructor(
     @Test
     @DisplayName("著者IDで書籍を検索できることをテストする")
     fun testFindBooksByAuthorId() {
-        val book1 = createBook("本1", 1000, listOf(testAuthor.id!!), "PUBLISHED")
-        val book2 = createBook("本2", 2000, listOf(testAuthor.id!!), "UNPUBLISHED")
-        createBook("本3", 3000, listOf(testAuthor2.id!!), "PUBLISHED")
+        val book1 = createBook("本1", 1000, listOf(testAuthor.id!!), PublicationStatus.PUBLISHED)
+        val book2 = createBook("本2", 2000, listOf(testAuthor.id!!), PublicationStatus.UNPUBLISHED)
+        createBook("本3", 3000, listOf(testAuthor2.id!!), PublicationStatus.PUBLISHED)
 
         val result = bookRepository.findByAuthorId(testAuthor.id!!)
 
@@ -113,7 +114,7 @@ class BookRepositoryTest @Autowired constructor(
     @Test
     @DisplayName("複数の著者を持つ書籍を著者IDで検索できることをテストする")
     fun testFindBooksWithMultipleAuthorsByAuthorId() {
-        val book = createBook("共著本", 3000, listOf(testAuthor.id!!, testAuthor2.id!!), "PUBLISHED")
+        val book = createBook("共著本", 3000, listOf(testAuthor.id!!, testAuthor2.id!!), PublicationStatus.PUBLISHED)
 
         val resultByAuthor1 = bookRepository.findByAuthorId(testAuthor.id!!)
         val resultByAuthor2 = bookRepository.findByAuthorId(testAuthor2.id!!)
@@ -125,14 +126,14 @@ class BookRepositoryTest @Autowired constructor(
     @Test
     @DisplayName("書籍情報を正常に更新できることをテストする")
     fun testUpdateBook() {
-        val book = createBook("元のタイトル", 1000, listOf(testAuthor.id!!), "UNPUBLISHED")
+        val book = createBook("元のタイトル", 1000, listOf(testAuthor.id!!), PublicationStatus.UNPUBLISHED)
         val bookId = book.id!!
 
         val result = updateBook(
             bookId,
             "新しいタイトル",
             2000,
-            "PUBLISHED",
+            PublicationStatus.PUBLISHED,
             listOf(testAuthor.id!!)
         )
 
@@ -140,13 +141,13 @@ class BookRepositoryTest @Autowired constructor(
         assertEquals(bookId, result.id)
         assertEquals("新しいタイトル", result.title)
         assertEquals(2000, result.price)
-        assertEquals("PUBLISHED", result.publicationStatus)
+        assertEquals(PublicationStatus.PUBLISHED, result.publicationStatus)
     }
 
     @Test
     @DisplayName("書籍の著者を変更できることをテストする")
     fun testUpdateBookAuthors() {
-        val book = createBook("本", 1000, listOf(testAuthor.id!!), "PUBLISHED")
+        val book = createBook("本", 1000, listOf(testAuthor.id!!), PublicationStatus.PUBLISHED)
         val bookId = book.id!!
 
         val result = updateBook(
@@ -165,7 +166,7 @@ class BookRepositoryTest @Autowired constructor(
     @Test
     @DisplayName("複数の著者を1人に減らせることをテストする")
     fun testUpdateBookRemoveAuthor() {
-        val book = createBook("共著本", 3000, listOf(testAuthor.id!!, testAuthor2.id!!), "PUBLISHED")
+        val book = createBook("共著本", 3000, listOf(testAuthor.id!!, testAuthor2.id!!), PublicationStatus.PUBLISHED)
         val bookId = book.id!!
 
         val result = updateBook(
@@ -184,7 +185,7 @@ class BookRepositoryTest @Autowired constructor(
     @Test
     @DisplayName("1人の著者を複数人に増やせることをテストする")
     fun testUpdateBookAddAuthor() {
-        val book = createBook("本", 1000, listOf(testAuthor.id!!), "PUBLISHED")
+        val book = createBook("本", 1000, listOf(testAuthor.id!!), PublicationStatus.PUBLISHED)
         val bookId = book.id!!
 
         val result = updateBook(
@@ -207,7 +208,7 @@ class BookRepositoryTest @Autowired constructor(
             nonExistentId,
             "タイトル",
             1000,
-            "PUBLISHED",
+            PublicationStatus.PUBLISHED,
             listOf(testAuthor.id!!)
         )
         assertNull(result)
@@ -216,8 +217,8 @@ class BookRepositoryTest @Autowired constructor(
     @Test
     @DisplayName("複数の書籍を作成・検索できることをテストする")
     fun testCreateAndFindMultipleBooks() {
-        val book1 = createBook("本1", 1000, listOf(testAuthor.id!!), "PUBLISHED")
-        val book2 = createBook("本2", 2000, listOf(testAuthor.id!!), "UNPUBLISHED")
+        val book1 = createBook("本1", 1000, listOf(testAuthor.id!!), PublicationStatus.PUBLISHED)
+        val book2 = createBook("本2", 2000, listOf(testAuthor.id!!), PublicationStatus.UNPUBLISHED)
 
         val foundBook1 = bookRepository.findById(book1.id!!)
         val foundBook2 = bookRepository.findById(book2.id!!)
@@ -232,14 +233,14 @@ class BookRepositoryTest @Autowired constructor(
         title: String,
         price: Int,
         authorIds: List<Int>,
-        publicationStatus: String
+        publicationStatus: PublicationStatus
     ) = bookRepository.create(title, price, authorIds, publicationStatus)
 
     private fun updateBook(
         id: Int,
         title: String,
         price: Int,
-        publicationStatus: String,
+        publicationStatus: PublicationStatus,
         authorIds: List<Int>
     ) = bookRepository.update(id, title, price, publicationStatus, authorIds)
 }

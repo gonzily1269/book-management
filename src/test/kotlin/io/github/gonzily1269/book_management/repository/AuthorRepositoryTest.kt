@@ -7,8 +7,10 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDate
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 /**
  * AuthorRepositoryのテストクラス
@@ -121,6 +123,32 @@ class AuthorRepositoryTest @Autowired constructor(
         assertNotNull(result)
         assertEquals(newName, result.name)
         assertEquals(author.birthDate, result.birthDate)
+    }
+
+    @Test
+    @DisplayName("空の著者IDリストを渡すとfalseを返すことをテストする")
+    fun testExistsAllByIdsWithEmptyList() {
+        val result = authorRepository.existsAllByIds(emptyList())
+        assertFalse(result)
+    }
+
+    @Test
+    @DisplayName("全著者IDが存在する場合はtrueを返すことをテストする")
+    fun testExistsAllByIdsWhenAllExist() {
+        val author1 = authorRepository.create("太郎", LocalDate.of(1990, 1, 15))
+        val author2 = authorRepository.create("花子", LocalDate.of(1985, 6, 20))
+
+        val result = authorRepository.existsAllByIds(listOf(author1.id!!, author2.id!!))
+        assertTrue(result)
+    }
+
+    @Test
+    @DisplayName("一部の著者IDが存在しない場合はfalseを返すことをテストする")
+    fun testExistsAllByIdsWhenSomeMissing() {
+        val author = authorRepository.create("太郎", LocalDate.of(1990, 1, 15))
+
+        val result = authorRepository.existsAllByIds(listOf(author.id!!, 99999))
+        assertFalse(result)
     }
 
 }

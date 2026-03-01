@@ -3,7 +3,6 @@ package io.github.gonzily1269.book_management.dto
 import jakarta.validation.constraints.Min
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.NotEmpty
-import jakarta.validation.constraints.Pattern
 
 /**
  * 書籍のデータ転送オブジェクト
@@ -18,7 +17,7 @@ data class BookDto(
     val id: Int? = null,
     val title: String,
     val price: Int,
-    val publicationStatus: String,
+    val publicationStatus: PublicationStatus,
     val authors: List<AuthorDto> = emptyList()
 )
 
@@ -37,11 +36,7 @@ data class BookCreateRequest(
     @field:Min(value = 0, message = "\${validation.book.price.min}")
     val price: Int,
 
-    @field:Pattern(
-        regexp = "PUBLISHED|UNPUBLISHED",
-        message = "\${validation.book.publicationStatus.pattern}"
-    )
-    val publicationStatus: String,
+    val publicationStatus: PublicationStatus,
 
     @field:NotEmpty(message = "\${validation.book.authorIds.not-empty}")
     val authorIds: List<Int>
@@ -62,11 +57,7 @@ data class BookUpdateRequest(
     @field:Min(value = 0, message = "\${validation.book.price.min}")
     val price: Int,
 
-    @field:Pattern(
-        regexp = "PUBLISHED|UNPUBLISHED",
-        message = "\${validation.book.publicationStatus.pattern}"
-    )
-    val publicationStatus: String,
+    val publicationStatus: PublicationStatus,
 
     @field:NotEmpty(message = "\${validation.book.authorIds.not-empty}")
     val authorIds: List<Int>

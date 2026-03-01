@@ -20,6 +20,28 @@ class AuthorRepository(
 ) {
 
     /**
+     * 指定された著者IDがすべて存在するかを確認
+     *
+     * 空リストは呼び出し前提を満たさない入力として false を返す。
+     *
+     * @param authorIds 著者IDリスト
+     * @return すべて存在する場合はtrue
+     */
+    fun existsAllByIds(authorIds: List<Int>): Boolean {
+        val uniqueAuthorIds = authorIds.toSet()
+        if (uniqueAuthorIds.isEmpty()) {
+            return false
+        }
+
+        val count = dsl.fetchCount(
+            Author.AUTHOR,
+            Author.AUTHOR.ID.`in`(uniqueAuthorIds)
+        )
+
+        return count == uniqueAuthorIds.size
+    }
+
+    /**
      * 新しい著者を作成
      *
      * @param name 著者名

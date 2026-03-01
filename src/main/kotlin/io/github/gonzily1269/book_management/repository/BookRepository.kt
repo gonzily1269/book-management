@@ -2,6 +2,7 @@ package io.github.gonzily1269.book_management.repository
 
 import io.github.gonzily1269.book_management.dto.AuthorDto
 import io.github.gonzily1269.book_management.dto.BookDto
+import io.github.gonzily1269.book_management.dto.PublicationStatus
 import io.github.gonzily1269.tables.Author
 import io.github.gonzily1269.tables.Book
 import io.github.gonzily1269.tables.BookAuthor
@@ -37,7 +38,7 @@ class BookRepository(
                     id = bookId,
                     title = record.get(Book.BOOK.TITLE),
                     price = record.get(Book.BOOK.PRICE),
-                    publicationStatus = record.get(Book.BOOK.PUBLICATION_STATUS),
+                    publicationStatus = PublicationStatus.valueOf(record.get(Book.BOOK.PUBLICATION_STATUS)),
                     authors = findAuthorsByBookId(bookId)
                 )
             }
@@ -66,7 +67,7 @@ class BookRepository(
                     id = bookId,
                     title = record.get(Book.BOOK.TITLE),
                     price = record.get(Book.BOOK.PRICE),
-                    publicationStatus = record.get(Book.BOOK.PUBLICATION_STATUS),
+                    publicationStatus = PublicationStatus.valueOf(record.get(Book.BOOK.PUBLICATION_STATUS)),
                     authors = findAuthorsByBookId(bookId)
                 )
             }
@@ -82,10 +83,10 @@ class BookRepository(
      * @return 作成された書籍DTO
      * @throws IllegalStateException 書籍の作成または取得に失敗した場合
      */
-    fun create(title: String, price: Int, authorIds: List<Int>, publicationStatus: String): BookDto {
+    fun create(title: String, price: Int, authorIds: List<Int>, publicationStatus: PublicationStatus): BookDto {
         val bookId = dsl.insertInto(Book.BOOK)
             .columns(Book.BOOK.TITLE, Book.BOOK.PRICE, Book.BOOK.PUBLICATION_STATUS)
-            .values(title, price, publicationStatus)
+            .values(title, price, publicationStatus.name)
             .returningResult(Book.BOOK.ID)
             .fetchSingle()
             .get(Book.BOOK.ID)!!
@@ -119,12 +120,12 @@ class BookRepository(
      * @param authorIds 更新する著者IDリスト
      * @return 更新された書籍DTO、見つからない場合はnull
      */
-    fun update(id: Int, title: String, price: Int, publicationStatus: String, authorIds: List<Int>): BookDto? {
+    fun update(id: Int, title: String, price: Int, publicationStatus: PublicationStatus, authorIds: List<Int>): BookDto? {
         // 書籍情報の更新
         val book = dsl.update(Book.BOOK)
             .set(Book.BOOK.TITLE, title)
             .set(Book.BOOK.PRICE, price)
-            .set(Book.BOOK.PUBLICATION_STATUS, publicationStatus)
+            .set(Book.BOOK.PUBLICATION_STATUS, publicationStatus.name)
             .where(Book.BOOK.ID.eq(id))
             .returningResult(Book.BOOK.ID, Book.BOOK.TITLE, Book.BOOK.PRICE, Book.BOOK.PUBLICATION_STATUS)
             .fetchOne { record ->
@@ -132,11 +133,11 @@ class BookRepository(
                     id = record.get(Book.BOOK.ID),
                     title = record.get(Book.BOOK.TITLE),
                     price = record.get(Book.BOOK.PRICE),
-                    publicationStatus = record.get(Book.BOOK.PUBLICATION_STATUS)
+                    publicationStatus = PublicationStatus.valueOf(record.get(Book.BOOK.PUBLICATION_STATUS))
                 )
             } ?: return null
 
-        // 著者関連付けの差分更新
+        // 著者関連付けを差分更新し、不要な削除・再挿入を避ける
         val currentAuthorIds = dsl.select(BookAuthor.BOOK_AUTHOR.AUTHOR_ID)
             .from(BookAuthor.BOOK_AUTHOR)
             .where(BookAuthor.BOOK_AUTHOR.BOOK_ID.eq(id))

@@ -3,6 +3,8 @@ package io.github.gonzily1269.book_management.service
 import io.github.gonzily1269.book_management.dto.BookCreateRequest
 import io.github.gonzily1269.book_management.dto.BookDto
 import io.github.gonzily1269.book_management.dto.BookUpdateRequest
+import io.github.gonzily1269.book_management.dto.PublicationStatus
+import io.github.gonzily1269.book_management.repository.AuthorRepository
 import io.github.gonzily1269.book_management.repository.BookRepository
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
@@ -21,9 +23,16 @@ import org.springframework.transaction.annotation.Transactional
 @Transactional
 class BookService(
     private val bookRepository: BookRepository,
+    private val authorRepository: AuthorRepository,
 
     @Value("\${error.book.published-cannot-unpublish}")
-    private val publishedCannotUnpublish: String
+    private val publishedCannotUnpublish: String,
+
+    @Value("\${error.book.duplicate-author-ids}")
+    private val duplicateAuthorIds: String,
+
+    @Value("\${error.book.author-not-found}")
+    private val authorNotFound: String
 ) {
 
     /**
@@ -43,6 +52,9 @@ class BookService(
      * @return 作成された書籍DTO
      */
     fun createBook(request: BookCreateRequest): BookDto {
+        validateUniqueAuthorIds(request.authorIds)
+        validateAuthorIds(request.authorIds)
+
         return bookRepository.create(
             request.title,
             request.price,
@@ -64,10 +76,13 @@ class BookService(
     fun updateBook(id: Int, request: BookUpdateRequest): BookDto? {
         val currentBook = bookRepository.findById(id) ?: return null
 
-        // 出版済みから未出版への変更はできない
-        if (currentBook.publicationStatus == "PUBLISHED" && request.publicationStatus == "UNPUBLISHED") {
+        // 仕様上、出版済みから未出版への巻き戻しは許可しない
+        if (currentBook.publicationStatus == PublicationStatus.PUBLISHED && request.publicationStatus == PublicationStatus.UNPUBLISHED) {
             throw IllegalStateException(publishedCannotUnpublish)
         }
+
+        validateUniqueAuthorIds(request.authorIds)
+        validateAuthorIds(request.authorIds)
 
         return bookRepository.update(
             id,
@@ -76,6 +91,27 @@ class BookService(
             request.publicationStatus,
             request.authorIds
         )
+    }
+
+    /**
+     * 著者IDの存在を事前検証し、FK違反をDB例外ではなく業務エラーとして扱う。
+     */
+    private fun validateAuthorIds(authorIds: List<Int>) {
+        if (!authorRepository.existsAllByIds(authorIds)) {
+            throw IllegalStateException(authorNotFound)
+        }
+    }
+
+    /**
+     * 著者IDの重複を事前に検知する。
+     *
+     * 重複を許可すると book_author への登録時に複合主キー違反へ到達するため、
+     * DB例外に依存せず業務エラーとして返す。
+     */
+    private fun validateUniqueAuthorIds(authorIds: List<Int>) {
+        if (authorIds.toSet().size != authorIds.size) {
+            throw IllegalStateException(duplicateAuthorIds)
+        }
     }
 }
 

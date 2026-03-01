@@ -3,6 +3,7 @@ package io.github.gonzily1269.book_management.controller
 import io.github.gonzily1269.book_management.dto.AuthorCreateRequest
 import io.github.gonzily1269.book_management.dto.BookDto
 import io.github.gonzily1269.book_management.dto.BookUpdateRequest
+import io.github.gonzily1269.book_management.dto.PublicationStatus
 import io.github.gonzily1269.book_management.service.AuthorService
 import io.github.gonzily1269.book_management.service.BookService
 import org.junit.jupiter.api.BeforeEach
@@ -139,6 +140,22 @@ class BookControllerTest @Autowired constructor(
     }
 
     @Test
+    @DisplayName("POST /api/books で存在しない著者IDを指定すると業務ロジックエラーになることをテストする")
+    fun testCreateBookWithInvalidAuthorId() {
+        createBookRequest(authorIds = listOf(99999))
+            .andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.error").value("業務ロジックエラー"))
+    }
+
+    @Test
+    @DisplayName("POST /api/books で重複した著者IDを指定すると業務ロジックエラーになることをテストする")
+    fun testCreateBookWithDuplicateAuthorIds() {
+        createBookRequest(authorIds = listOf(testAuthorId, testAuthorId))
+            .andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.error").value("業務ロジックエラー"))
+    }
+
+    @Test
     @DisplayName("updateBookの分岐を直接呼び出しで網羅できることをテストする（200/404）")
     fun testUpdateBookBranchByDirectInvocation() {
         val service = Mockito.mock(BookService::class.java)
@@ -147,11 +164,11 @@ class BookControllerTest @Autowired constructor(
         val request = BookUpdateRequest(
             title = "t",
             price = 100,
-            publicationStatus = "PUBLISHED",
+            publicationStatus = PublicationStatus.PUBLISHED,
             authorIds = listOf(testAuthorId)
         )
 
-        val dto = BookDto(id = 1, title = "t", price = 100, publicationStatus = "PUBLISHED")
+        val dto = BookDto(id = 1, title = "t", price = 100, publicationStatus = PublicationStatus.PUBLISHED)
 
         Mockito.`when`(service.updateBook(1, request)).thenReturn(dto)
         Mockito.`when`(service.updateBook(999, request)).thenReturn(null)
