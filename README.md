@@ -1,6 +1,6 @@
 # Book Management API
 
-書籍と著者の管理を行うREST APIアプリケーション。Kotlin、Spring Boot、jOOQ、PostgreSQLを使用したAPI。
+書籍と著者の管理を行うREST APIアプリケーション。
 
 ## 概要
 
