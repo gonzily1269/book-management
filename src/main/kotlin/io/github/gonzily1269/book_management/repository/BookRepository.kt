@@ -6,8 +6,6 @@ import io.github.gonzily1269.tables.Author
 import io.github.gonzily1269.tables.Book
 import io.github.gonzily1269.tables.BookAuthor
 import org.jooq.DSLContext
-import org.springframework.beans.factory.annotation.Value
-import org.springframework.dao.DataAccessResourceFailureException
 import org.springframework.stereotype.Repository
 
 /**
@@ -17,15 +15,10 @@ import org.springframework.stereotype.Repository
  * jOOQを使用してSQLを実行し、書籍と著者の関連情報を管理する。
  *
  * @property dsl jOOQのDSLコンテキスト
- * @property createFailedMessage 書籍作成失敗時のエラーメッセージ
- * @property retrieveFailedMessage 書籍取得失敗時のエラーメッセージ
  */
 @Repository
 class BookRepository(
-    private val dsl: DSLContext,
-
-    @Value("\${error.repository.book.create-failed}")
-    private val createFailedMessage: String
+    private val dsl: DSLContext
 ) {
 
     /**
@@ -38,18 +31,17 @@ class BookRepository(
         return dsl.select()
             .from(Book.BOOK)
             .where(Book.BOOK.ID.eq(id))
-            .fetchOne { record ->
+            .fetchOptional { record ->
+                val bookId = record.get(Book.BOOK.ID)!!
                 BookDto(
-                    id = record.get(Book.BOOK.ID),
+                    id = bookId,
                     title = record.get(Book.BOOK.TITLE),
                     price = record.get(Book.BOOK.PRICE),
-                    publicationStatus = record.get(Book.BOOK.PUBLICATION_STATUS)
+                    publicationStatus = record.get(Book.BOOK.PUBLICATION_STATUS),
+                    authors = findAuthorsByBookId(bookId)
                 )
-            }?.let { book ->
-                book.id?.let { bookId ->
-                    book.copy(authors = findAuthorsByBookId(bookId))
-                }
             }
+            .orElse(null)
     }
 
     /**
@@ -69,17 +61,14 @@ class BookRepository(
             .join(BookAuthor.BOOK_AUTHOR).on(Book.BOOK.ID.eq(BookAuthor.BOOK_AUTHOR.BOOK_ID))
             .where(BookAuthor.BOOK_AUTHOR.AUTHOR_ID.eq(authorId))
             .fetch { record ->
+                val bookId = record.get(Book.BOOK.ID)!!
                 BookDto(
-                    id = record.get(Book.BOOK.ID),
+                    id = bookId,
                     title = record.get(Book.BOOK.TITLE),
                     price = record.get(Book.BOOK.PRICE),
-                    publicationStatus = record.get(Book.BOOK.PUBLICATION_STATUS)
+                    publicationStatus = record.get(Book.BOOK.PUBLICATION_STATUS),
+                    authors = findAuthorsByBookId(bookId)
                 )
-            }
-            .mapNotNull { book ->
-                book.id?.let { id ->
-                    book.copy(authors = findAuthorsByBookId(id))
-                }
             }
     }
 
@@ -98,9 +87,8 @@ class BookRepository(
             .columns(Book.BOOK.TITLE, Book.BOOK.PRICE, Book.BOOK.PUBLICATION_STATUS)
             .values(title, price, publicationStatus)
             .returningResult(Book.BOOK.ID)
-            .fetchOne()
-            ?.get(Book.BOOK.ID)
-            ?: throw DataAccessResourceFailureException(createFailedMessage)
+            .fetchSingle()
+            .get(Book.BOOK.ID)!!
 
         // 著者との関連付け
         authorIds.forEach { authorId ->

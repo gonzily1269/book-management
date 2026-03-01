@@ -1,8 +1,8 @@
 package io.github.gonzily1269.book_management.exception
 
-import org.springframework.dao.DataAccessException
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
+import org.springframework.http.converter.HttpMessageNotReadableException
 import org.springframework.web.bind.MethodArgumentNotValidException
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
@@ -11,19 +11,29 @@ import java.time.LocalDateTime
 
 /**
  * グローバル例外ハンドラ
- *
- * アプリケーション全体で発生する例外を捕捉し、適切なHTTPレスポンスを返すクラス。
- * バリデーションエラー、業務ロジックエラー、予期しないエラーをハンドリングする。
  */
 @RestControllerAdvice
 class GlobalExceptionHandler {
 
     /**
-     * バリデーションエラーをハンドリング
-     *
-     * @param ex バリデーション例外
-     * @param request Webリクエスト
-     * @return エラーレスポンス（ステータスコード400）
+     * JSONの解析エラーをハンドリング (型不一致やNull注入など)
+     */
+    @ExceptionHandler(HttpMessageNotReadableException::class)
+    fun handleHttpMessageNotReadableException(
+        request: WebRequest
+    ): ResponseEntity<ErrorResponse> {
+        val errorResponse = ErrorResponse(
+            status = HttpStatus.BAD_REQUEST.value(),
+            error = "バリデーションエラー",
+            message = "リクエストボディの解析に失敗しました。データ型や必須項目を確認してください。",
+            path = request.getDescription(false).removePrefix("uri=")
+        )
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse)
+    }
+
+    /**
+     * バリデーションエラーをハンドリング (@Valid による検証失敗)
      */
     @ExceptionHandler(MethodArgumentNotValidException::class)
     fun handleValidationException(
@@ -38,7 +48,6 @@ class GlobalExceptionHandler {
         }
 
         val errorResponse = ErrorResponse(
-            timestamp = LocalDateTime.now(),
             status = HttpStatus.BAD_REQUEST.value(),
             error = "バリデーションエラー",
             message = "リクエストボディのバリデーションに失敗しました",
@@ -51,10 +60,6 @@ class GlobalExceptionHandler {
 
     /**
      * 業務ロジックエラーをハンドリング
-     *
-     * @param ex 状態不正例外
-     * @param request Webリクエスト
-     * @return エラーレスポンス（ステータスコード400）
      */
     @ExceptionHandler(IllegalStateException::class)
     fun handleIllegalStateException(
@@ -62,7 +67,6 @@ class GlobalExceptionHandler {
         request: WebRequest
     ): ResponseEntity<ErrorResponse> {
         val errorResponse = ErrorResponse(
-            timestamp = LocalDateTime.now(),
             status = HttpStatus.BAD_REQUEST.value(),
             error = "業務ロジックエラー",
             message = ex.message ?: "リクエストが業務ルールに違反しています",
@@ -73,34 +77,7 @@ class GlobalExceptionHandler {
     }
 
     /**
-     * データベースアクセスエラーをハンドリング
-     *
-     * @param ex データアクセス例外
-     * @param request Webリクエスト
-     * @return エラーレスポンス（ステータスコード500）
-     */
-    @ExceptionHandler(DataAccessException::class)
-    fun handleDataAccessException(
-        ex: DataAccessException,
-        request: WebRequest
-    ): ResponseEntity<ErrorResponse> {
-        val errorResponse = ErrorResponse(
-            timestamp = LocalDateTime.now(),
-            status = HttpStatus.INTERNAL_SERVER_ERROR.value(),
-            error = "データベースエラー",
-            message = ex.message ?: "データベースの操作中にエラーが発生しました",
-            path = request.getDescription(false).removePrefix("uri=")
-        )
-
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse)
-    }
-
-    /**
      * その他の予期しないエラーをハンドリング
-     *
-     * @param ex 発生した例外
-     * @param request Webリクエスト
-     * @return エラーレスポンス（ステータスコード500）
      */
     @ExceptionHandler(Exception::class)
     fun handleGeneralException(
@@ -108,7 +85,6 @@ class GlobalExceptionHandler {
         request: WebRequest
     ): ResponseEntity<ErrorResponse> {
         val errorResponse = ErrorResponse(
-            timestamp = LocalDateTime.now(),
             status = HttpStatus.INTERNAL_SERVER_ERROR.value(),
             error = "内部サーバーエラー",
             message = ex.message ?: "予期しないエラーが発生しました",
@@ -132,7 +108,7 @@ class GlobalExceptionHandler {
  * @property errors フィールドごとのバリデーションエラー（任意）
  */
 data class ErrorResponse(
-    val timestamp: LocalDateTime,
+    val timestamp: LocalDateTime = LocalDateTime.now(),
     val status: Int,
     val error: String,
     val message: String,

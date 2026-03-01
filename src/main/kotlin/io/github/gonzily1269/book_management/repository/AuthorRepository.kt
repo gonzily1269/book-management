@@ -3,8 +3,6 @@ package io.github.gonzily1269.book_management.repository
 import io.github.gonzily1269.book_management.dto.AuthorDto
 import io.github.gonzily1269.tables.Author
 import org.jooq.DSLContext
-import org.springframework.beans.factory.annotation.Value
-import org.springframework.dao.DataAccessResourceFailureException
 import org.springframework.stereotype.Repository
 import java.time.LocalDate
 
@@ -15,14 +13,10 @@ import java.time.LocalDate
  * jOOQを使用してSQLを実行し、著者情報を管理する。
  *
  * @property dsl jOOQのDSLコンテキスト
- * @property createFailedMessage 著者作成失敗時のエラーメッセージ
  */
 @Repository
 class AuthorRepository(
-    private val dsl: DSLContext,
-
-    @Value("\${error.repository.author.create-failed}")
-    private val createFailedMessage: String
+    private val dsl: DSLContext
 ) {
 
     /**
@@ -31,21 +25,19 @@ class AuthorRepository(
      * @param name 著者名
      * @param birthDate 生年月日
      * @return 作成された著者DTO
-     * @throws DataAccessResourceFailureException 著者の作成に失敗した場合（DBの不良など）
      */
     fun create(name: String, birthDate: LocalDate): AuthorDto {
         return dsl.insertInto(Author.AUTHOR)
             .columns(Author.AUTHOR.NAME, Author.AUTHOR.BIRTH_DATE)
             .values(name, birthDate)
             .returningResult(Author.AUTHOR.ID, Author.AUTHOR.NAME, Author.AUTHOR.BIRTH_DATE)
-            .fetchOne { record ->
+            .fetchSingle { record ->
                 AuthorDto(
                     id = record.get(Author.AUTHOR.ID),
                     name = record.get(Author.AUTHOR.NAME),
                     birthDate = record.get(Author.AUTHOR.BIRTH_DATE)
                 )
             }
-            ?: throw DataAccessResourceFailureException(createFailedMessage)
     }
 
     /**
